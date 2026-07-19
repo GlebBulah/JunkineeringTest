@@ -2,6 +2,8 @@
 
 Unity test project focused on Addressables lifecycle, async loading, cancellation, fallback handling, and remote content delivery.
 
+Unity version: `6000.5.2f1`
+
 The implementation intentionally avoids extra runtime dependencies such as UniTask or a DI container. In a production project, `IAddressableService` could be registered through DI, for example with VContainer, and async helpers could be standardized through UniTask. For this test task, the goal is to keep the project small and show the required Addressables behavior using plain C# `async/await`.
 
 ## What Was Implemented

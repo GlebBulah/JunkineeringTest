@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: a5708c5a821e1ea48875cdc5efd6accb
   m_currentHash:
     serializedVersion: 2
-    Hash: 00000000000000000000000000000000
+    Hash: 7175513dddf4f65c3ee19151688b39a7
   m_ExtractTypeTreeData: 0
   m_DisableWriteTypeTree: 0
   m_OptimizeCatalogSize: 0
@@ -80,7 +80,7 @@ MonoBehaviour:
       - m_Id: 51ed8ea382b9ff3438f02cddb79ae424
         m_Value: '[UnityEngine.AddressableAssets.Addressables.BuildPath]/[BuildTarget]'
       - m_Id: 807e3f0f0985e294d9ea84c37dae51a0
-        m_Value: '[UnityEditor.EditorUserBuildSettings.activeBuildTarget]'
+        m_Value: WebGL
       - m_Id: ba475fc4a8a0cee42b1bcd223f140cf2
         m_Value: 'https://precious-gumption-d57c06.netlify.app/[BuildTarget]'
       - m_Id: cc4ed74069ee80d4ca9082c2d09434d3
