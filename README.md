@@ -2,29 +2,7 @@
 
 Unity test project focused on Addressables lifecycle, async loading, cancellation, fallback handling, and remote content delivery.
 
-## AddressableService
-
-```text
-AddressableTapGame
-  -> IAddressableService
-      -> AddressableService
-          -> Unity Addressables API
-              -> Local bundles
-              -> Remote catalog / bundles
-
-AddressableService.LoadAsync<T>(key)
-  -> AddressableAsset<T>
-      -> Asset
-      -> AsyncOperationHandle<T>
-      -> released through AddressableService.ReleaseAsync(...)
-
-AddressableTapGame
-  -> Target cube renderer
-  -> Status / error UI
-  -> Input System
-```
-
-`AddressableService` is separated behind `IAddressableService`, so in a real production project it can be registered through DI, for example with VContainer. For this test task I kept the runtime setup dependency-free and instantiate the service directly from the simple gameplay MonoBehaviour to avoid pulling extra packages that are not required for the evaluated behavior.
+The implementation intentionally avoids extra runtime dependencies such as UniTask or a DI container. In a production project, `IAddressableService` could be registered through DI, for example with VContainer, and async helpers could be standardized through UniTask. For this test task, the goal is to keep the project small and show the required Addressables behavior using plain C# `async/await`.
 
 ## What Was Implemented
 

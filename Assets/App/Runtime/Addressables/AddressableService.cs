@@ -10,7 +10,6 @@ namespace JunkineeringTest.Runtime.Addressables
 {
     public sealed class AddressableService : IAddressableService, IDisposable
     {
-        private readonly object _gate = new object();
         private readonly HashSet<ITrackedAddressableAsset> _loadedAssets = new();
         private readonly SemaphoreSlim _initializeGate = new(1, 1);
 
@@ -39,7 +38,7 @@ namespace JunkineeringTest.Runtime.Addressables
 
                 try
                 {
-                    await _initializeHandle.AwaitAsync(cancellationToken);
+                    await AwaitAsync(_initializeHandle, cancellationToken);
                     EnsureSucceeded(_initializeHandle, "Addressables initialization", null, typeof(IResourceLocator));
                     _isInitialized = true;
                 }
@@ -65,7 +64,7 @@ namespace JunkineeringTest.Runtime.Addressables
 
             try
             {
-                await handle.AwaitAsync(cancellationToken);
+                await AwaitAsync(handle, cancellationToken);
                 EnsureSucceeded(handle, "Load asset", key, typeof(T));
 
                 if (handle.Result == null)
@@ -101,24 +100,15 @@ namespace JunkineeringTest.Runtime.Addressables
                 return Task.CompletedTask;
             }
 
-            lock (_gate)
-            {
-                _loadedAssets.Remove(asset);
-            }
-
+            _loadedAssets.Remove(asset);
             asset.TryRelease();
             return Task.CompletedTask;
         }
 
         public Task ReleaseAllAsync(CancellationToken cancellationToken)
         {
-            List<ITrackedAddressableAsset> assets;
-
-            lock (_gate)
-            {
-                assets = new List<ITrackedAddressableAsset>(_loadedAssets);
-                _loadedAssets.Clear();
-            }
+            var assets = new List<ITrackedAddressableAsset>(_loadedAssets);
+            _loadedAssets.Clear();
 
             for (var index = assets.Count - 1; index >= 0; index--)
             {
@@ -143,10 +133,7 @@ namespace JunkineeringTest.Runtime.Addressables
 
         private void Track(ITrackedAddressableAsset asset)
         {
-            lock (_gate)
-            {
-                _loadedAssets.Add(asset);
-            }
+            _loadedAssets.Add(asset);
         }
 
         private static void ValidateKey(object key)
@@ -179,6 +166,32 @@ namespace JunkineeringTest.Runtime.Addressables
         private static string FormatKey(object key)
         {
             return key?.ToString() ?? "<null>";
+        }
+
+        private static async Task AwaitAsync<T>(AsyncOperationHandle<T> handle, CancellationToken cancellationToken)
+        {
+            if (!handle.IsValid())
+            {
+                throw new InvalidOperationException("Addressables returned an invalid async operation handle.");
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!cancellationToken.CanBeCanceled)
+            {
+                await handle.Task;
+                return;
+            }
+
+            var cancellationTask = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var registration = cancellationToken.Register(() => cancellationTask.TrySetCanceled(cancellationToken));
+
+            if (await Task.WhenAny(handle.Task, cancellationTask.Task) == cancellationTask.Task)
+            {
+                await cancellationTask.Task;
+            }
+
+            await handle.Task;
         }
 
         private static void SafeRelease<T>(AsyncOperationHandle<T> handle)
