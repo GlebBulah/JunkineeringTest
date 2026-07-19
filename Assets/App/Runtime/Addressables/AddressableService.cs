@@ -177,21 +177,29 @@ namespace JunkineeringTest.Runtime.Addressables
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!cancellationToken.CanBeCanceled)
+            var completion = new TaskCompletionSource<object>();
+
+            void Complete(AsyncOperationHandle<T> _)
             {
-                await handle.Task;
-                return;
+                completion.TrySetResult(null);
             }
 
-            var cancellationTask = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-            using var registration = cancellationToken.Register(() => cancellationTask.TrySetCanceled(cancellationToken));
+            handle.Completed += Complete;
 
-            if (await Task.WhenAny(handle.Task, cancellationTask.Task) == cancellationTask.Task)
+            try
             {
-                await cancellationTask.Task;
-            }
+                if (handle.IsDone)
+                {
+                    completion.TrySetResult(null);
+                }
 
-            await handle.Task;
+                using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
+                await completion.Task;
+            }
+            finally
+            {
+                handle.Completed -= Complete;
+            }
         }
 
         private static void SafeRelease<T>(AsyncOperationHandle<T> handle)

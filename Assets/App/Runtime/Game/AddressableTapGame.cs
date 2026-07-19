@@ -199,11 +199,22 @@ namespace JunkineeringTest.Runtime.Game
             try
             {
                 SetTint(missTint);
-                await Task.Delay(TimeSpan.FromSeconds(missFlashSeconds), _flash.Token);
+                await WaitSecondsAsync(missFlashSeconds, _flash.Token);
                 SetTint(Color.white);
             }
             catch (OperationCanceledException)
             {
+            }
+        }
+
+        private static async Task WaitSecondsAsync(float seconds, CancellationToken token)
+        {
+            var endTime = Time.unscaledTime + seconds;
+
+            while (Time.unscaledTime < endTime)
+            {
+                token.ThrowIfCancellationRequested();
+                await Task.Yield();
             }
         }
 
