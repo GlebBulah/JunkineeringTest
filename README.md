@@ -27,6 +27,24 @@ Remote load path:
 https://precious-gumption-d57c06.netlify.app/[BuildTarget]
 ```
 
+## WebGL Demo
+
+The WebGL player build is generated into `docs/`, so it can be published directly through GitHub Pages.
+
+GitHub Pages settings:
+
+```text
+Source: Deploy from a branch
+Branch: main
+Folder: /docs
+```
+
+The WebGL player still expects remote Addressables content from Netlify. After rebuilding Addressables, upload `ServerData/WebGL` to Netlify so the files are available at:
+
+```text
+https://precious-gumption-d57c06.netlify.app/WebGL
+```
+
 ## Main Files
 
 - `Assets/Scenes/AddressablesTapGame.unity`
