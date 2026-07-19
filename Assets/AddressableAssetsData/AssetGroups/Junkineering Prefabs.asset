@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Junkineering Prefabs
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Junkineering Prefabs
+  m_GUID: 802bf9a210c793543a7161ca6ee34eeb
+  m_SerializeEntries:
+  - m_GUID: 7656456248d8cbe4e891d084b19bc0e5
+    m_Address: target-cube
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - gameplay
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 94409e3127b804f4fb4178b9ac965f67
+    m_Address: texture-fallback
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - gameplay
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: e14d44af4df8f4a4ab7560218911b3ba, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: c7fdb69ec304f35499836f25a672e8c3, type: 2}
+    - {fileID: 11400000, guid: c8522024d3af189468ed6f2d75e079e2, type: 2}
