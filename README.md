@@ -7,9 +7,16 @@ Unity test project focused on Addressables lifecycle, async loading, cancellatio
 ```text
 AddressableTapGame
   -> IAddressableService
-      -> Unity Addressables API
-          -> Local bundles
-          -> Remote catalog / bundles
+      -> AddressableService
+          -> Unity Addressables API
+              -> Local bundles
+              -> Remote catalog / bundles
+
+AddressableService.LoadAsync<T>(key)
+  -> AddressableAsset<T>
+      -> Asset
+      -> AsyncOperationHandle<T>
+      -> released through AddressableService.ReleaseAsync(...)
 
 AddressableTapGame
   -> Target cube renderer

@@ -65,8 +65,8 @@ namespace JunkineeringTest.Runtime.Game
         {
             try
             {
-                _targetPrefabAsset = await _addressables.LoadAssetAsync<GameObject>(targetPrefab.RuntimeKey, _lifetime.Token);
-                _fallbackTextureAsset = await _addressables.LoadAssetAsync<Texture>(fallbackTexture.RuntimeKey, _lifetime.Token);
+                _targetPrefabAsset = await _addressables.LoadAsync<GameObject>(targetPrefab.RuntimeKey, _lifetime.Token);
+                _fallbackTextureAsset = await _addressables.LoadAsync<Texture>(fallbackTexture.RuntimeKey, _lifetime.Token);
 
                 _targetInstance = Instantiate(_targetPrefabAsset.Asset, spawnPosition, Quaternion.identity);
                 _targetInstance.name = $"{_targetPrefabAsset.Asset.name} (Runtime)";
@@ -150,7 +150,7 @@ namespace JunkineeringTest.Runtime.Game
                 errorText.gameObject.SetActive(false);
 
                 var texture = roundTextures[_textureIndex++ % roundTextures.Count];
-                loadedTexture = await _addressables.LoadAssetAsync<Texture>(texture.RuntimeKey, token);
+                loadedTexture = await _addressables.LoadAsync<Texture>(texture.RuntimeKey, token);
                 token.ThrowIfCancellationRequested();
 
                 if (version != _version)

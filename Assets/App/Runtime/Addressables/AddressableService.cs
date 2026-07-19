@@ -2,19 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using UnityEngine;
 using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.ResourceManagement.ResourceLocations;
 using UnityAddressables = UnityEngine.AddressableAssets.Addressables;
 
 namespace JunkineeringTest.Runtime.Addressables
 {
     public sealed class AddressableService : IAddressableService, IDisposable
     {
-        private readonly object _resourceGate = new object();
-        private readonly HashSet<AddressableResource> _activeResources = new HashSet<AddressableResource>();
-        private readonly SemaphoreSlim _initializationGate = new SemaphoreSlim(1, 1);
+        private readonly object _gate = new object();
+        private readonly HashSet<ITrackedAddressableAsset> _loadedAssets = new();
+        private readonly SemaphoreSlim _initializeGate = new(1, 1);
 
         private AsyncOperationHandle<IResourceLocator> _initializeHandle;
         private bool _hasInitializeHandle;
@@ -27,7 +25,7 @@ namespace JunkineeringTest.Runtime.Addressables
                 return;
             }
 
-            await _initializationGate.WaitAsync(cancellationToken);
+            await _initializeGate.WaitAsync(cancellationToken);
 
             try
             {
@@ -54,11 +52,11 @@ namespace JunkineeringTest.Runtime.Addressables
             }
             finally
             {
-                _initializationGate.Release();
+                _initializeGate.Release();
             }
         }
 
-        public async Task<AddressableAsset<T>> LoadAssetAsync<T>(object key, CancellationToken cancellationToken) where T : UnityEngine.Object
+        public async Task<AddressableAsset<T>> LoadAsync<T>(object key, CancellationToken cancellationToken) where T : UnityEngine.Object
         {
             ValidateKey(key);
             await InitializeAsync(cancellationToken);
@@ -75,9 +73,9 @@ namespace JunkineeringTest.Runtime.Addressables
                     throw new AddressableOperationException($"Addressable asset '{FormatKey(key)}' loaded as null.", key, typeof(T));
                 }
 
-                var resource = new AddressableAsset<T>(key, handle.Result, handle);
-                Track(resource);
-                return resource;
+                var asset = new AddressableAsset<T>(key, handle.Result, handle);
+                Track(asset);
+                return asset;
             }
             catch (OperationCanceledException)
             {
@@ -96,162 +94,35 @@ namespace JunkineeringTest.Runtime.Addressables
             }
         }
 
-        public async Task<IReadOnlyList<IResourceLocation>> LoadResourceLocationsAsync(object key, Type assetType, CancellationToken cancellationToken)
-        {
-            ValidateKey(key);
-            assetType = assetType ?? typeof(UnityEngine.Object);
-            await InitializeAsync(cancellationToken);
-
-            var handle = UnityAddressables.LoadResourceLocationsAsync(key, assetType);
-
-            try
-            {
-                await handle.AwaitAsync(cancellationToken);
-                EnsureSucceeded(handle, "Load resource locations", key, assetType);
-                return new List<IResourceLocation>(handle.Result);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (AddressableOperationException)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                throw new AddressableOperationException($"Failed to load addressable locations for '{FormatKey(key)}'.", key, assetType, exception);
-            }
-            finally
-            {
-                SafeRelease(handle);
-            }
-        }
-
-        public async Task<long> GetDownloadSizeAsync(object key, CancellationToken cancellationToken)
-        {
-            ValidateKey(key);
-            await InitializeAsync(cancellationToken);
-
-            var handle = UnityAddressables.GetDownloadSizeAsync(key);
-
-            try
-            {
-                await handle.AwaitAsync(cancellationToken);
-                EnsureSucceeded(handle, "Get download size", key, typeof(long));
-                return handle.Result;
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (AddressableOperationException)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                throw new AddressableOperationException($"Failed to get download size for '{FormatKey(key)}'.", key, typeof(long), exception);
-            }
-            finally
-            {
-                SafeRelease(handle);
-            }
-        }
-
-        public async Task DownloadDependenciesAsync(object key, CancellationToken cancellationToken)
-        {
-            ValidateKey(key);
-            await InitializeAsync(cancellationToken);
-
-            var handle = UnityAddressables.DownloadDependenciesAsync(key, false);
-
-            try
-            {
-                await handle.AwaitAsync(cancellationToken);
-                EnsureSucceeded(handle, "Download dependencies", key, typeof(object));
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (AddressableOperationException)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                throw new AddressableOperationException($"Failed to download dependencies for '{FormatKey(key)}'.", key, typeof(object), exception);
-            }
-            finally
-            {
-                SafeRelease(handle);
-            }
-        }
-
-        public async Task<AddressableInstance> InstantiateAsync(object key, Vector3 position, Quaternion rotation, Transform parent, CancellationToken cancellationToken)
-        {
-            ValidateKey(key);
-            await InitializeAsync(cancellationToken);
-
-            var handle = UnityAddressables.InstantiateAsync(key, position, rotation, parent);
-
-            try
-            {
-                await handle.AwaitAsync(cancellationToken);
-                EnsureSucceeded(handle, "Instantiate", key, typeof(GameObject));
-
-                if (handle.Result == null)
-                {
-                    throw new AddressableOperationException($"Addressable instance '{FormatKey(key)}' loaded as null.", key, typeof(GameObject));
-                }
-
-                var instance = new AddressableInstance(key, handle.Result, handle);
-                Track(instance);
-                return instance;
-            }
-            catch (OperationCanceledException)
-            {
-                SafeReleaseInstance(handle);
-                throw;
-            }
-            catch (AddressableOperationException)
-            {
-                SafeReleaseInstance(handle);
-                throw;
-            }
-            catch (Exception exception)
-            {
-                SafeReleaseInstance(handle);
-                throw new AddressableOperationException($"Failed to instantiate addressable prefab '{FormatKey(key)}'.", key, typeof(GameObject), exception);
-            }
-        }
-
         public Task ReleaseAsync<T>(AddressableAsset<T> asset, CancellationToken cancellationToken) where T : UnityEngine.Object
         {
-            ReleaseResource(asset);
-            return Task.CompletedTask;
-        }
+            if (asset == null)
+            {
+                return Task.CompletedTask;
+            }
 
-        public Task ReleaseInstanceAsync(AddressableInstance instance, CancellationToken cancellationToken)
-        {
-            ReleaseResource(instance);
+            lock (_gate)
+            {
+                _loadedAssets.Remove(asset);
+            }
+
+            asset.TryRelease();
             return Task.CompletedTask;
         }
 
         public Task ReleaseAllAsync(CancellationToken cancellationToken)
         {
-            List<AddressableResource> resources;
+            List<ITrackedAddressableAsset> assets;
 
-            lock (_resourceGate)
+            lock (_gate)
             {
-                resources = new List<AddressableResource>(_activeResources);
-                _activeResources.Clear();
+                assets = new List<ITrackedAddressableAsset>(_loadedAssets);
+                _loadedAssets.Clear();
             }
 
-            for (var index = resources.Count - 1; index >= 0; index--)
+            for (var index = assets.Count - 1; index >= 0; index--)
             {
-                ReleaseResource(resources[index]);
+                assets[index].Release();
             }
 
             if (_hasInitializeHandle)
@@ -267,30 +138,15 @@ namespace JunkineeringTest.Runtime.Addressables
         public void Dispose()
         {
             ReleaseAllAsync(CancellationToken.None).GetAwaiter().GetResult();
-            _initializationGate.Dispose();
+            _initializeGate.Dispose();
         }
 
-        private void Track(AddressableResource resource)
+        private void Track(ITrackedAddressableAsset asset)
         {
-            lock (_resourceGate)
+            lock (_gate)
             {
-                _activeResources.Add(resource);
+                _loadedAssets.Add(asset);
             }
-        }
-
-        private void ReleaseResource(AddressableResource resource)
-        {
-            if (resource == null || !resource.TryMarkReleased())
-            {
-                return;
-            }
-
-            lock (_resourceGate)
-            {
-                _activeResources.Remove(resource);
-            }
-
-            resource.ReleaseFromAddressables();
         }
 
         private static void ValidateKey(object key)
@@ -338,14 +194,6 @@ namespace JunkineeringTest.Runtime.Addressables
             if (handle.IsValid())
             {
                 UnityAddressables.Release(handle);
-            }
-        }
-
-        private static void SafeReleaseInstance(AsyncOperationHandle<GameObject> handle)
-        {
-            if (handle.IsValid())
-            {
-                UnityAddressables.ReleaseInstance(handle);
             }
         }
     }
